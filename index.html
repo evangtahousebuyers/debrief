@@ -1,0 +1,674 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#10141c">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Debrief">
+<title>Post-Appointment Debrief</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#10141c;
+    --panel:#1a2030;
+    --panel-2:#222a3d;
+    --line:#2e3850;
+    --text:#e8ecf4;
+    --muted:#8b94aa;
+    --amber:#f5a623;
+    --amber-dim:#b97d17;
+    --green:#3ec97e;
+    --red:#e25555;
+    --radius:14px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+  html,body{height:100%;}
+  body{
+    background:var(--bg);
+    color:var(--text);
+    font-family:'Inter',system-ui,sans-serif;
+    font-size:16px;
+    line-height:1.5;
+    display:flex;
+    flex-direction:column;
+    min-height:100dvh;
+  }
+  .wrap{width:100%;max-width:560px;margin:0 auto;padding:20px 18px 32px;flex:1;display:flex;flex-direction:column;}
+  .eyebrow{
+    font-family:'Barlow Condensed',sans-serif;
+    font-weight:600;font-size:14px;letter-spacing:.14em;text-transform:uppercase;color:var(--amber);
+  }
+  h1{font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:34px;line-height:1.1;margin:6px 0 4px;}
+  .sub{color:var(--muted);font-size:14px;}
+  .screen{display:none;flex:1;flex-direction:column;}
+  .screen.active{display:flex;}
+
+  /* ---------- start screen ---------- */
+  .field{margin-top:18px;}
+  .field label{display:block;font-family:'Barlow Condensed',sans-serif;font-weight:600;font-size:14px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:6px;}
+  .field input{
+    width:100%;padding:14px;border-radius:var(--radius);border:1px solid var(--line);
+    background:var(--panel);color:var(--text);font-size:17px;font-family:inherit;
+  }
+  .field input:focus{outline:2px solid var(--amber);outline-offset:1px;border-color:transparent;}
+  .note{margin-top:16px;padding:12px 14px;border-radius:var(--radius);background:var(--panel);border:1px solid var(--line);color:var(--muted);font-size:13px;}
+  .note strong{color:var(--text);}
+
+  /* ---------- buttons ---------- */
+  .btn{
+    display:block;width:100%;padding:16px;border-radius:var(--radius);border:none;cursor:pointer;
+    font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:20px;letter-spacing:.06em;text-transform:uppercase;
+    transition:transform .06s ease, filter .15s ease;
+  }
+  .btn:active{transform:scale(.985);}
+  .btn-amber{background:var(--amber);color:#1a1408;}
+  .btn-ghost{background:transparent;color:var(--muted);border:1px solid var(--line);}
+  .btn-green{background:var(--green);color:#06200f;}
+  .btn:focus-visible{outline:3px solid #fff;outline-offset:2px;}
+  .btnrow{display:flex;gap:10px;margin-top:12px;}
+  .btnrow .btn{flex:1;}
+
+  /* ---------- question screen ---------- */
+  .progress{display:flex;align-items:center;gap:12px;margin-bottom:14px;}
+  .progress .count{font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:18px;color:var(--amber);white-space:nowrap;}
+  .bar{flex:1;height:5px;border-radius:3px;background:var(--panel-2);overflow:hidden;}
+  .bar > div{height:100%;background:var(--amber);width:0%;transition:width .3s ease;border-radius:3px;}
+
+  .qcard{
+    background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);
+    padding:20px 18px;
+  }
+  .qlabel{font-family:'Barlow Condensed',sans-serif;font-weight:600;font-size:15px;letter-spacing:.12em;text-transform:uppercase;color:var(--amber);margin-bottom:6px;}
+  .qtext{font-size:20px;font-weight:600;line-height:1.4;}
+  .qhint{margin-top:6px;color:var(--muted);font-size:14px;}
+  .replay{
+    margin-top:12px;background:none;border:none;color:var(--muted);cursor:pointer;
+    font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;
+    padding:4px 0;
+  }
+  .replay:hover{color:var(--text);}
+
+  /* mic */
+  .miczone{display:flex;flex-direction:column;align-items:center;margin:26px 0 18px;}
+  .micbtn{
+    width:96px;height:96px;border-radius:50%;border:none;cursor:pointer;position:relative;
+    background:var(--panel-2);border:2px solid var(--line);color:var(--muted);
+    display:flex;align-items:center;justify-content:center;
+    transition:background .2s,border-color .2s,color .2s;
+  }
+  .micbtn svg{width:40px;height:40px;}
+  .micbtn.listening{background:#3a2c10;border-color:var(--amber);color:var(--amber);}
+  .micbtn.listening::before,
+  .micbtn.listening::after{
+    content:"";position:absolute;inset:-2px;border-radius:50%;border:2px solid var(--amber);
+    animation:pulse 1.6s ease-out infinite;
+  }
+  .micbtn.listening::after{animation-delay:.8s;}
+  @keyframes pulse{0%{transform:scale(1);opacity:.7;}100%{transform:scale(1.55);opacity:0;}}
+  @media (prefers-reduced-motion:reduce){
+    .micbtn.listening::before,.micbtn.listening::after{animation:none;opacity:.5;}
+    .bar > div{transition:none;}
+  }
+  .micstate{margin-top:10px;font-family:'Barlow Condensed',sans-serif;font-weight:600;font-size:15px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);}
+  .micstate.on{color:var(--amber);}
+
+  .answerbox{
+    min-height:88px;background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);
+    padding:14px;font-size:16px;color:var(--text);width:100%;font-family:inherit;line-height:1.5;resize:vertical;
+  }
+  .answerbox:focus{outline:2px solid var(--amber);outline-offset:1px;}
+  .answerbox::placeholder{color:#5a6378;}
+  .spacer{flex:1;}
+
+  /* ---------- review screen ---------- */
+  .review-item{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:14px;margin-bottom:10px;}
+  .review-item .qlabel{margin-bottom:8px;}
+  .review-item textarea{
+    width:100%;background:var(--panel-2);border:1px solid var(--line);border-radius:10px;
+    color:var(--text);font-family:inherit;font-size:15px;padding:10px;min-height:54px;resize:vertical;line-height:1.45;
+  }
+  .review-item textarea:focus{outline:2px solid var(--amber);outline-offset:1px;}
+  .meta{color:var(--muted);font-size:14px;margin-bottom:14px;}
+  .toast{
+    position:fixed;left:50%;bottom:24px;transform:translateX(-50%);
+    background:var(--green);color:#06200f;font-weight:600;padding:12px 22px;border-radius:30px;
+    opacity:0;pointer-events:none;transition:opacity .25s;z-index:50;font-size:15px;white-space:nowrap;
+  }
+  .toast.show{opacity:1;}
+  .unsupported{display:none;margin-top:16px;padding:14px;border-radius:var(--radius);background:#3a1d1d;border:1px solid #5c2e2e;color:#f0c0c0;font-size:14px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- ============ START ============ -->
+  <div class="screen active" id="screen-start">
+    <div>
+      <div class="eyebrow">GTA House Buyers</div>
+      <h1>Post-Appointment Debrief</h1>
+      <div class="sub">No VA on shift? It'll ask you the questions out loud — just talk.</div>
+    </div>
+
+    <div class="note">
+      <strong>Hands-free:</strong> tap Start and it asks everything out loud — your name, the property, then the debrief questions. Just talk; when you stop for 4 seconds it saves your answer and moves on. Say <strong>"skip"</strong> for anything that doesn't apply. Review and copy everything for the CRM once you're parked.
+    </div>
+
+    <div class="unsupported" id="unsupported">
+      Voice capture isn't supported in this browser. Open this page in <strong>Chrome (Android)</strong> or <strong>Safari (iPhone)</strong>. You can still type answers manually.
+    </div>
+
+    <div class="spacer"></div>
+    <button class="btn btn-amber" id="btnStart" style="margin-top:24px;">Start debrief</button>
+  </div>
+
+  <!-- ============ QUESTION ============ -->
+  <div class="screen" id="screen-q">
+    <div class="progress">
+      <div class="count" id="qCount">1 / 20</div>
+      <div class="bar"><div id="qBar"></div></div>
+    </div>
+
+    <div class="qcard">
+      <div class="qlabel" id="qLabel"></div>
+      <div class="qtext" id="qText"></div>
+      <div class="qhint" id="qHint"></div>
+      <button class="replay" id="btnReplay" type="button">&#8634;&nbsp; Repeat question</button>
+    </div>
+
+    <div class="miczone">
+      <button class="micbtn" id="btnMic" type="button" aria-label="Toggle microphone">
+        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+          <path d="M12 14a3 3 0 0 0 3-3V6a3 3 0 1 0-6 0v5a3 3 0 0 0 3 3Z"/>
+          <path d="M19 11a1 1 0 1 0-2 0 5 5 0 0 1-10 0 1 1 0 1 0-2 0 7 7 0 0 0 6 6.92V20H8a1 1 0 1 0 0 2h8a1 1 0 1 0 0-2h-3v-2.08A7 7 0 0 0 19 11Z"/>
+        </svg>
+      </button>
+      <div class="micstate" id="micState">Mic off — tap to talk</div>
+    </div>
+
+    <textarea class="answerbox" id="answerBox" placeholder="Your answer appears here. You can also type or fix it."></textarea>
+
+    <div class="spacer"></div>
+    <div class="btnrow">
+      <button class="btn btn-ghost" id="btnNA" type="button">N/A</button>
+      <button class="btn btn-amber" id="btnNext" type="button">Next &raquo;</button>
+    </div>
+  </div>
+
+  <!-- ============ REVIEW ============ -->
+  <div class="screen" id="screen-review">
+    <div>
+      <div class="eyebrow">Review &amp; send</div>
+      <h1>Check your answers</h1>
+      <div class="meta" id="reviewMeta"></div>
+    </div>
+    <div id="reviewList"></div>
+    <div class="meta" id="sheetStatus" style="margin:4px 0 10px;"></div>
+    <button class="btn btn-green" id="btnCopy" type="button" style="margin-top:8px;">Copy for CRM</button>
+    <button class="btn btn-ghost" id="btnSend" type="button" style="margin-top:10px;display:none;">Re-send to sheet</button>
+    <button class="btn btn-ghost" id="btnRestart" type="button" style="margin-top:10px;">Start a new debrief</button>
+  </div>
+
+</div>
+<div class="toast" id="toast">Copied — paste into REsimpli</div>
+
+<script>
+/* ============================================================
+   CONFIG — GOOGLE SHEET LOGGING
+   1. Open your Google Sheet > Extensions > Apps Script
+   2. Paste in the provided apps-script code and Deploy > Web app
+      (Execute as: Me / Access: Anyone)
+   3. Copy the deployment URL (ends in /exec) between the quotes:
+============================================================ */
+const WEBHOOK_URL = "https://script.google.com/macros/s/AKfycbygWkrEeZb0dBhv2rVl8pJY5OqOTk0RaGunPedy_hlq-lpTmvR359IjvcfxTgXy1DH1/exec";
+
+const QUESTIONS = [
+  { label:"Rep Name", meta:"rep",
+    text:"What's your name?",
+    hint:"" },
+  { label:"Property Address", meta:"prop",
+    text:"What's the property address for this appointment?",
+    hint:"Fix spelling at the review screen if needed" },
+  { label:"Reason for No Offer",
+    text:"Was there a reason no offer was made? If you made an offer, just say: offer was made.",
+    hint:"Say \u201coffer was made\u201d if it doesn\u2019t apply." },
+  { label:"Other (Reason for No Offer)",
+    text:"Any other details on why no offer was made?",
+    hint:"",
+    skipIf: () => /offer was made|made an offer|made the offer|we made one|presented an offer/i.test(metaAnswerByLabel("Reason for No Offer")) },
+  { label:"Problem to Solve",
+    text:"What issues is the seller facing? What value did we bring, and how did you leave the seller better off than when they first contacted us?",
+    hint:"" },
+  { label:"Price Expectation",
+    text:"What was the seller's initial number, and what was their lowest acceptable offer?",
+    hint:"Initial number & LAO" },
+  { label:"Timeline",
+    text:"When does the seller need to close, and how flexible are they?",
+    hint:"" },
+  { label:"Convenience Factors",
+    text:"Any special requests? For example leaving items behind, staying after close, or moving assistance.",
+    hint:"" },
+  { label:"Anchor Given to Seller",
+    text:"What anchor number did you give the seller?",
+    hint:"" },
+  { label:"Final Offer Presented",
+    text:"What was the final offer presented?",
+    hint:"" },
+  { label:"Property Condition Grade (1-5)",
+    text:"On a scale of 1 to 5, how would you grade the property's condition?",
+    hint:"" },
+  { label:"Neighbourhood Grade",
+    text:"How would you grade the neighbourhood?",
+    hint:"" },
+  { label:"Rehab Estimate",
+    text:"What's your rehab estimate?",
+    hint:"" },
+  { label:"Best Buyer Type",
+    text:"What's the best buyer type for this property? For example: fix and flip, buy and hold, landlord, or end user.",
+    hint:"" },
+  { label:"Key Objections Raised by Seller",
+    text:"What were the key objections raised by the seller?",
+    hint:"" },
+  { label:"Seller's Current Status",
+    text:"What is the seller thinking or planning to do next?",
+    hint:"" },
+  { label:"Why Would the Seller Work with Us?",
+    text:"Why would the seller work with us? What benefits did they acknowledge?",
+    hint:"" },
+  { label:"Follow-Up Actions & Next Steps",
+    text:"What are the follow-up actions and next steps? Include who's responsible and the timeline.",
+    hint:"" },
+  { label:"Lead Manager's Next Steps",
+    text:"What does the lead manager need to do next on this file?",
+    hint:"What does the HBS need the LM to do" },
+  { label:"HBS Feedback to LM about Appointment",
+    text:"Give two positives about how this appointment was set up, and two areas for improvement.",
+    hint:"2 went well / 2 to improve" },
+];
+
+/* ============================================================ */
+const $ = id => document.getElementById(id);
+const screens = { start:$("screen-start"), q:$("screen-q"), review:$("screen-review") };
+let current = 0;
+const answers = new Array(QUESTIONS.length).fill("");
+let recognition = null;
+let listening = false;
+let wantListening = false;   // survive mobile auto-stops
+let finalSoFar = "";
+
+const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+const speechOK = !!SR;
+const secureOK = window.isSecureContext;
+if (!speechOK){
+  $("unsupported").style.display = "block";
+} else if (!secureOK){
+  $("unsupported").style.display = "block";
+  $("unsupported").innerHTML = "Mic is blocked because this page isn't loaded over <strong>HTTPS</strong>. Opening the file directly (file://) or via plain http disables the microphone — host it on GitHub Pages or Cloudflare Pages and open the https link.";
+}
+
+function show(name){
+  Object.values(screens).forEach(s => s.classList.remove("active"));
+  screens[name].classList.add("active");
+  window.scrollTo(0,0);
+}
+
+/* ---------- TTS ---------- */
+function speak(text, onDone){
+  try{
+    speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(text);
+    u.rate = 1.02; u.pitch = 1;
+    const vs = speechSynthesis.getVoices();
+    const v = vs.find(v => /en[-_](CA|US|GB)/i.test(v.lang) && /Google|Samantha|Natural/i.test(v.name)) ||
+              vs.find(v => /^en/i.test(v.lang));
+    if (v) u.voice = v;
+    u.onend = () => onDone && onDone();
+    u.onerror = () => onDone && onDone();
+    speechSynthesis.speak(u);
+  }catch(e){ onDone && onDone(); }
+}
+if (speechSynthesis && speechSynthesis.onvoiceschanged !== undefined){
+  speechSynthesis.onvoiceschanged = () => speechSynthesis.getVoices();
+}
+
+/* ---------- STT ---------- */
+const SILENCE_MS = 4000;     // auto-advance after this much silence (once they've spoken)
+const NO_ANSWER_MS = 12000;  // nudge if nothing said at all
+
+let silenceTimer = null;
+let noAnswerTimer = null;
+
+function clearTimers(){
+  clearTimeout(silenceTimer); silenceTimer = null;
+  clearTimeout(noAnswerTimer); noAnswerTimer = null;
+}
+
+function armSilenceTimer(){
+  clearTimeout(silenceTimer);
+  silenceTimer = setTimeout(() => {
+    const v = $("answerBox").value.trim();
+    if (listening && v){
+      autoAdvance(v);
+    }
+  }, SILENCE_MS);
+}
+
+function armNoAnswerTimer(){
+  clearTimeout(noAnswerTimer);
+  noAnswerTimer = setTimeout(() => {
+    if (listening && !$("answerBox").value.trim()){
+      stopListening();
+      speak("Say your answer, or say skip.", () => { if (speechOK) startListening(); });
+    }
+  }, NO_ANSWER_MS);
+}
+
+function autoAdvance(value){
+  clearTimers();
+  stopListening();
+  speak("Got it.", () => saveAndAdvance(value));
+}
+
+function isSkipCommand(text){
+  const t = text.trim().toLowerCase().replace(/[.,!]/g,"");
+  return t === "skip" || t === "skip it" || t === "skip question" ||
+         t === "skip this" || t === "skip this one" ||
+         t === "not applicable" || t === "no answer" || t === "n a";
+}
+
+function buildRecognition(){
+  const r = new SR();
+  r.lang = "en-CA";
+  r.continuous = true;
+  r.interimResults = true;
+  r.onresult = (e) => {
+    let interim = "";
+    for (let i = e.resultIndex; i < e.results.length; i++){
+      const t = e.results[i][0].transcript;
+      if (e.results[i].isFinal){
+        // Voice command: "skip" on its own skips the question
+        if (!finalSoFar && isSkipCommand(t)){
+          clearTimers();
+          stopListening();
+          $("answerBox").value = "";
+          speak("Skipped.", () => saveAndAdvance("N/A"));
+          return;
+        }
+        finalSoFar += (finalSoFar && !finalSoFar.endsWith(" ") ? " " : "") + t.trim();
+      } else {
+        interim += t;
+      }
+    }
+    $("answerBox").value = (finalSoFar + " " + interim).trim();
+    // Any speech activity resets the silence countdown
+    clearTimeout(noAnswerTimer);
+    armSilenceTimer();
+  };
+  r.onend = () => {
+    // Mobile browsers stop recognition on silence — restart if user didn't stop it.
+    if (wantListening){
+      try{ r.start(); }catch(e){ setListeningUI(false); }
+    } else {
+      setListeningUI(false);
+    }
+  };
+  r.onerror = (e) => {
+    if (e.error === "no-speech") return; // harmless, onend will restart
+    wantListening = false;
+    setListeningUI(false);
+    const msgs = {
+      "not-allowed":"Mic blocked — allow microphone in browser settings",
+      "service-not-allowed":"Mic blocked — allow microphone in browser settings",
+      "audio-capture":"No microphone found on this device",
+      "network":"Speech service unreachable — check connection",
+      "aborted":"Mic stopped — tap to talk"
+    };
+    $("micState").textContent = msgs[e.error] || ("Mic error: " + e.error + " — tap to retry");
+  };
+  return r;
+}
+
+function setListeningUI(on){
+  listening = on;
+  $("btnMic").classList.toggle("listening", on);
+  const s = $("micState");
+  s.classList.toggle("on", on);
+  s.textContent = on ? "Listening\u2026 pause 4s to auto-advance" : "Mic off — tap to talk";
+}
+
+let micPermissionAsked = false;
+async function ensureMicPermission(){
+  if (micPermissionAsked) return true;
+  try{
+    const stream = await navigator.mediaDevices.getUserMedia({ audio:true });
+    stream.getTracks().forEach(t => t.stop());
+    micPermissionAsked = true;
+    return true;
+  }catch(e){
+    $("micState").textContent = "Mic blocked — allow microphone in browser settings";
+    return false;
+  }
+}
+
+async function startListening(){
+  if (!speechOK){ $("micState").textContent = "Voice not supported in this browser — type instead"; return; }
+  if (!secureOK){ $("micState").textContent = "Needs HTTPS — open the hosted link"; return; }
+  const ok = await ensureMicPermission();
+  if (!ok) return;
+  finalSoFar = $("answerBox").value.trim();
+  if (!recognition) recognition = buildRecognition();
+  wantListening = true;
+  try{ recognition.start(); setListeningUI(true); }
+  catch(e){ /* already started */ setListeningUI(true); }
+  if (finalSoFar) armSilenceTimer();
+  else armNoAnswerTimer();
+}
+function stopListening(){
+  clearTimers();
+  wantListening = false;
+  if (recognition){ try{ recognition.stop(); }catch(e){} }
+  setListeningUI(false);
+}
+
+/* ---------- Keep screen awake while debriefing (mic dies if phone sleeps) ---------- */
+let wakeLock = null;
+async function keepAwake(){
+  try{
+    if ("wakeLock" in navigator) wakeLock = await navigator.wakeLock.request("screen");
+  }catch(e){}
+}
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible" && screens.q.classList.contains("active")) keepAwake();
+});
+
+/* ---------- Crash-safe draft (survives a closed tab or dead battery) ---------- */
+const DRAFT_KEY = "debrief-draft";
+function saveDraft(){
+  try{
+    localStorage.setItem(DRAFT_KEY, JSON.stringify({ current, answers, ts: Date.now() }));
+  }catch(e){}
+}
+function loadDraft(){
+  try{
+    const d = JSON.parse(localStorage.getItem(DRAFT_KEY));
+    if (d && Array.isArray(d.answers) && d.answers.some(a => a) &&
+        Date.now() - d.ts < 12*60*60*1000) return d;
+  }catch(e){}
+  return null;
+}
+function clearDraft(){ try{ localStorage.removeItem(DRAFT_KEY); }catch(e){} }
+
+/* ---------- Question flow ---------- */
+function loadQuestion(i){
+  const q = QUESTIONS[i];
+  $("qCount").textContent = (i+1) + " / " + QUESTIONS.length;
+  $("qBar").style.width = ((i)/QUESTIONS.length*100) + "%";
+  $("qLabel").textContent = q.label;
+  $("qText").textContent = q.text;
+  $("qHint").textContent = q.hint || "";
+  $("qHint").style.display = q.hint ? "block" : "none";
+  $("answerBox").value = answers[i] || "";
+  finalSoFar = answers[i] || "";
+  speak("Question " + (i+1) + ". " + q.text, () => {
+    if (speechOK) startListening();
+  });
+}
+
+function saveAndAdvance(value){
+  stopListening();
+  speechSynthesis.cancel();
+  answers[current] = value;
+  saveDraft();
+  // advance, skipping any question whose skipIf condition is met
+  let next = current + 1;
+  while (next < QUESTIONS.length && QUESTIONS[next].skipIf && QUESTIONS[next].skipIf()){
+    answers[next] = "N/A";
+    next++;
+  }
+  if (next < QUESTIONS.length){
+    current = next;
+    loadQuestion(current);
+  } else {
+    buildReview();
+    show("review");
+    sendToSheet(true); // auto-log to Google Sheet
+    speak("That's everything. Your answers were sent to the sheet. Review them when you're parked.");
+  }
+}
+
+function metaAnswer(key){
+  const i = QUESTIONS.findIndex(q => q.meta === key);
+  return i >= 0 ? (answers[i] || "").trim() : "";
+}
+function metaAnswerByLabel(label){
+  const i = QUESTIONS.findIndex(q => q.label === label);
+  return i >= 0 ? (answers[i] || "").trim() : "";
+}
+
+/* ---------- Review ---------- */
+function buildReview(){
+  $("reviewMeta").textContent = (metaAnswer("rep") || "Rep") + " — " + (metaAnswer("prop") || "No address") + " — " + new Date().toLocaleString();
+  const list = $("reviewList");
+  list.innerHTML = "";
+  QUESTIONS.forEach((q,i) => {
+    const item = document.createElement("div");
+    item.className = "review-item";
+    const lab = document.createElement("div");
+    lab.className = "qlabel";
+    lab.textContent = q.label;
+    const ta = document.createElement("textarea");
+    ta.value = answers[i] || "N/A";
+    ta.addEventListener("input", () => answers[i] = ta.value);
+    item.appendChild(lab); item.appendChild(ta);
+    list.appendChild(item);
+  });
+  $("btnSend").style.display = WEBHOOK_URL ? "block" : "none";
+}
+
+function buildOutput(){
+  let out = "POST-APPOINTMENT NOTES\n";
+  out += "Rep: " + (metaAnswer("rep") || "N/A") + "\n";
+  out += "Property: " + (metaAnswer("prop") || "N/A") + "\n";
+  out += "Completed: " + new Date().toLocaleString() + "\n\n";
+  QUESTIONS.forEach((q,i) => {
+    if (q.meta) return; // rep/property already in the header
+    out += q.label + ":\n" + (answers[i] && answers[i].trim() ? answers[i].trim() : "N/A") + "\n\n";
+  });
+  return out.trim();
+}
+
+function toast(msg){
+  const t = $("toast");
+  t.textContent = msg;
+  t.classList.add("show");
+  setTimeout(() => t.classList.remove("show"), 2200);
+}
+
+/* ---------- Events ---------- */
+$("btnStart").addEventListener("click", () => {
+  const draft = loadDraft();
+  if (draft && draft.current < QUESTIONS.length - 1 &&
+      confirm("You have an unfinished debrief. Resume where you left off?")){
+    current = draft.current;
+    draft.answers.forEach((a,i) => answers[i] = a || "");
+  } else {
+    clearDraft();
+    current = 0;
+    answers.fill("");
+  }
+  keepAwake();
+  show("q");
+  loadQuestion(current);
+});
+
+$("btnMic").addEventListener("click", () => {
+  if (!speechOK){ toast("Voice not supported — type instead"); return; }
+  speechSynthesis.cancel();
+  listening ? stopListening() : startListening();
+});
+
+$("btnReplay").addEventListener("click", () => {
+  stopListening();
+  speak(QUESTIONS[current].text, () => { if (speechOK) startListening(); });
+});
+
+$("answerBox").addEventListener("input", () => {
+  if (!listening) finalSoFar = $("answerBox").value;
+});
+
+$("btnNext").addEventListener("click", () => {
+  const v = $("answerBox").value.trim();
+  saveAndAdvance(v || "N/A");
+});
+$("btnNA").addEventListener("click", () => saveAndAdvance("N/A"));
+
+$("btnCopy").addEventListener("click", async () => {
+  const text = buildOutput();
+  try{
+    await navigator.clipboard.writeText(text);
+    toast("Copied — paste into REsimpli");
+  }catch(e){
+    const ta = document.createElement("textarea");
+    ta.value = text; document.body.appendChild(ta); ta.select();
+    document.execCommand("copy"); ta.remove();
+    toast("Copied — paste into REsimpli");
+  }
+  clearDraft();
+});
+
+async function sendToSheet(auto){
+  const status = $("sheetStatus");
+  if (!WEBHOOK_URL){
+    status.textContent = "Sheet logging not set up — use Copy for CRM.";
+    return;
+  }
+  status.textContent = "Sending to Google Sheet\u2026";
+  const payload = {
+    rep: metaAnswer("rep"), property: metaAnswer("prop"),
+    completed: new Date().toISOString(),
+    answers: QUESTIONS.filter(q => !q.meta).map((q) => {
+      const i = QUESTIONS.indexOf(q);
+      return { field:q.label, answer:(answers[i] || "N/A") };
+    })
+  };
+  try{
+    await fetch(WEBHOOK_URL, { method:"POST", mode:"no-cors",
+      headers:{ "Content-Type":"text/plain" }, body: JSON.stringify(payload) });
+    status.textContent = "\u2713 Saved to Google Sheet " + new Date().toLocaleTimeString();
+    if (!auto) toast("Sent to sheet");
+  }catch(e){
+    status.textContent = "Couldn't reach the sheet — tap Re-send, or use Copy for CRM.";
+    if (!auto) toast("Send failed — use Copy instead");
+  }
+}
+$("btnSend").addEventListener("click", () => sendToSheet(false));
+
+$("btnRestart").addEventListener("click", () => {
+  stopListening(); speechSynthesis.cancel();
+  show("start");
+});
+</script>
+</body>
+</html>
