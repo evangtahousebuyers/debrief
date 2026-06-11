@@ -153,7 +153,7 @@
     </div>
 
     <div class="note">
-      <strong>Hands-free:</strong> tap Start and it asks everything out loud — your name, the property, then the debrief questions. Just talk; when you stop for 4 seconds it saves your answer and moves on. Say <strong>"skip"</strong> for anything that doesn't apply. Review and copy everything for the CRM once you're parked.
+      <strong>Hands-free:</strong> tap Start and it asks everything out loud — your name, the property, then the debrief questions. Just talk; when you stop for 3 seconds it saves your answer and moves on. Say <strong>"skip"</strong> for anything that doesn't apply. Review and copy everything for the CRM once you're parked.
     </div>
 
     <div class="unsupported" id="unsupported">
@@ -297,6 +297,7 @@ let recognition = null;
 let listening = false;
 let wantListening = false;   // survive mobile auto-stops
 let finalSoFar = "";
+let sheetSent = false;   // guard so each debrief auto-logs to the sheet only once
 
 const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
 const speechOK = !!SR;
@@ -334,7 +335,7 @@ if (speechSynthesis && speechSynthesis.onvoiceschanged !== undefined){
 }
 
 /* ---------- STT ---------- */
-const SILENCE_MS = 4000;     // auto-advance after this much silence (once they've spoken)
+const SILENCE_MS = 3000;     // auto-advance after this much silence (once they've spoken)
 const NO_ANSWER_MS = 12000;  // nudge if nothing said at all
 
 let silenceTimer = null;
@@ -435,7 +436,7 @@ function setListeningUI(on){
   $("btnMic").classList.toggle("listening", on);
   const s = $("micState");
   s.classList.toggle("on", on);
-  s.textContent = on ? "Listening\u2026 pause 4s to auto-advance" : "Mic off — tap to talk";
+  s.textContent = on ? "Listening\u2026 pause 3s to auto-advance" : "Mic off — tap to talk";
 }
 
 let micPermissionAsked = false;
@@ -598,6 +599,7 @@ $("btnStart").addEventListener("click", () => {
     current = 0;
     answers.fill("");
   }
+  sheetSent = false;   // fresh debrief — allow one auto-send
   keepAwake();
   show("q");
   loadQuestion(current);
@@ -644,6 +646,8 @@ async function sendToSheet(auto){
     status.textContent = "Sheet logging not set up — use Copy for CRM.";
     return;
   }
+  if (auto && sheetSent) return;   // already auto-logged this debrief \u2014 don't duplicate
+  sheetSent = true;
   status.textContent = "Sending to Google Sheet\u2026";
   const payload = {
     rep: metaAnswer("rep"), property: metaAnswer("prop"),
