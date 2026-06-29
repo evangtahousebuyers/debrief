@@ -148,12 +148,12 @@
   <div class="screen active" id="screen-start">
     <div>
       <div class="eyebrow">GTA House Buyers</div>
-      <h1>Post-Appointment Debrief</h1>
-      <div class="sub">No VA on shift? It'll ask you the questions out loud — just talk.</div>
+      <h1>Appointment Notes</h1>
+      <div class="sub">Pick which notes you're capturing — it asks the questions out loud, just talk.</div>
     </div>
 
     <div class="note">
-      <strong>Hands-free:</strong> tap Start and it asks everything out loud — your name, the property, then the debrief questions. Just talk; when you stop for 3 seconds it saves your answer and moves on. Say <strong>"skip"</strong> for anything that doesn't apply. Review and copy everything for the CRM once you're parked.
+      <strong>Hands-free:</strong> pick a button below and it asks everything out loud — your name, the property, then the questions. Just talk; when you stop for 3 seconds it saves your answer and moves on. Say <strong>"skip"</strong> for anything that doesn't apply. Review and copy everything for the CRM once you're parked.
     </div>
 
     <div class="unsupported" id="unsupported">
@@ -161,7 +161,8 @@
     </div>
 
     <div class="spacer"></div>
-    <button class="btn btn-amber" id="btnStart" style="margin-top:24px;">Start debrief</button>
+    <button class="btn btn-amber" id="btnDebrief" style="margin-top:24px;">No contract &middot; Debrief</button>
+    <button class="btn btn-green" id="btnUnderContract" style="margin-top:10px;">Got contract &middot; Under Contract Notes</button>
   </div>
 
   <!-- ============ QUESTION ============ -->
@@ -224,7 +225,7 @@
 ============================================================ */
 const WEBHOOK_URL = "https://script.google.com/macros/s/AKfycbygWkrEeZb0dBhv2rVl8pJY5OqOTk0RaGunPedy_hlq-lpTmvR359IjvcfxTgXy1DH1/exec";
 
-const QUESTIONS = [
+const DEBRIEF_QUESTIONS = [
   { label:"Rep Name", meta:"rep",
     text:"What's your name?",
     hint:"" },
@@ -288,11 +289,167 @@ const QUESTIONS = [
     hint:"2 went well / 2 to improve" },
 ];
 
+const UNDER_CONTRACT_QUESTIONS = [
+  { label:"Rep Name", meta:"rep",
+    text:"What's your name?",
+    hint:"" },
+  { label:"Property Address", meta:"prop",
+    text:"What's the property address for this contract?",
+    hint:"Fix spelling at the review screen if needed" },
+
+  /* ---- Due diligence items ---- */
+  { label:"Final Sales Rep's APS Uploaded",
+    text:"Final Sales Rep's A P S uploaded?",
+    hint:"Say yes or no" },
+  { label:"Estimated Repairs",
+    text:"What's the estimated repairs?",
+    hint:"" },
+  { label:"Wholesale Fee",
+    text:"What's the wholesale fee?",
+    hint:"" },
+  { label:"ARV Comps (3): HouseSigma link, amounts, descriptions",
+    text:"A R V comps. Give the three House Sigma comps with links, amounts, and descriptions.",
+    hint:"3 comps — link, amount, description" },
+  { label:"All Media Uploaded",
+    text:"All media uploaded?",
+    hint:"Say yes or no" },
+  { label:"Mortgage Docs Uploaded",
+    text:"Mortgage docs uploaded?",
+    hint:"Say yes or no" },
+  { label:"Property Tax Bill Uploaded",
+    text:"Property tax bill uploaded?",
+    hint:"Say yes or no" },
+  { label:"Copy of ID Front and Back Uploaded",
+    text:"Copy of I D, front and back, uploaded?",
+    hint:"Say yes or no" },
+  { label:"Under Contract Notes Completed",
+    text:"Under contract notes completed?",
+    hint:"Say yes or no" },
+
+  /* ---- Narrative ---- */
+  { label:"Seller Highlight",
+    text:"Seller highlight. What's the single most important thing to solve, and what's the seller's personality?",
+    hint:"Most important thing to solve & seller personality" },
+  { label:"Value We Brought the Seller",
+    text:"What value did we bring the seller? What did you do to leave them in a better place than when they first contacted us?",
+    hint:"" },
+  { label:"Seller Sensitivities",
+    text:"Any seller sensitivities?",
+    hint:"e.g. none, tenant conflict, high needs, embarrassed — use caution posting on social media" },
+  { label:"Unusual APS Clauses",
+    text:"Any unusual A P S clauses that serve the seller? Tell the story behind them.",
+    hint:"" },
+  { label:"Met All Parties on Title in Person",
+    text:"Has the HBS met all parties on title in person? Say yes or no, with an explanation.",
+    hint:"e.g. death, divorce, POA, seller not present, virtual appt" },
+  { label:"Why Good Deal / Selling Features",
+    text:"Why is this a good deal for a buyer? What are the main selling features? Share all the good news. Sell the sizzle!",
+    hint:"e.g. location, nearby attractions, recent updates, unique features" },
+  { label:"Crucial Insights",
+    text:"Any crucial insights?",
+    hint:"e.g. 2-unit conversion, added basement bedrooms, workshop on hydro, squatters, seller open to price reduction" },
+  { label:"Best Buyers and Why",
+    text:"Who are the best buyers for this property, and why?",
+    hint:"e.g. flipper for the spread, landlord for the hold, end user turnkey at a discount" },
+  { label:"Bad News",
+    text:"Any bad news?",
+    hint:"" },
+  { label:"House Type",
+    text:"What's the house type?",
+    hint:"e.g. detached with in-law suite, end-unit townhouse, stacked condo town, triplex" },
+  { label:"Baths",
+    text:"Baths. How many, where in the house, and how many pieces?",
+    hint:"#, location, # of pieces" },
+  { label:"Beds",
+    text:"Beds. How many, and where in the house?",
+    hint:"#, location" },
+  { label:"Basement",
+    text:"Describe the basement.",
+    hint:"finished / unfinished / none; full height / low / crawl; legal apt / in-law suite; separate entrance" },
+  { label:"Parking",
+    text:"Parking. How many, and where?",
+    hint:"#, location" },
+  { label:"Laundry (if condo)",
+    text:"Laundry, if it's a condo?",
+    hint:"" },
+  { label:"Level of Renos Required",
+    text:"What's the general level of renos required?",
+    hint:"e.g. full gut, cosmetic updates, rent-ready, already renovated" },
+  { label:"Big Ticket Items Status",
+    text:"What's the status of the big ticket items?",
+    hint:"roof, furnace, windows, etc." },
+  { label:"Other Noteworthy Specifics",
+    text:"Any other noteworthy specifics?",
+    hint:"e.g. basement leak, holes in walls, no electricity" },
+  { label:"Smells",
+    text:"Any smells?",
+    hint:"e.g. smoke, animal urine or feces, mould" },
+  { label:"Conversion Opportunity",
+    text:"Any conversion opportunity?",
+    hint:"e.g. basement ceiling height (only if HBS personally measured), separate entrance" },
+  { label:"Did HBS See the Property",
+    text:"Did the HBS see the property?",
+    hint:"yes in person, yes virtually, or no" },
+  { label:"Photos: Who and When",
+    text:"Who took the photos, and when?",
+    hint:"e.g. HBS at appt, seller 2 years ago, House Sigma 2021 listing" },
+  { label:"Closing Date Importance to Seller",
+    text:"Is the closing date important to the seller? Why or why not?",
+    hint:"e.g. vacant so fast close, needs time, lender deadline, wants to move before winter" },
+  { label:"Official Flex Closing on APS",
+    text:"Official flex closing on the A P S? Explain why — tell the story.",
+    hint:"" },
+  { label:"Seller Staying After Close",
+    text:"Is the seller staying after close? If so, why are they staying, and when are they leaving?",
+    hint:"" },
+  { label:"Tenanted (now or on possession)",
+    text:"Is it tenanted, now or on possession? If so, give the full story.",
+    hint:"story, how long, rent, pay on time, up to date, how many, family or single, assuming or vacant possession, viewings impact, lease uploaded?" },
+  { label:"Promises Made to Seller ON Contract",
+    text:"What promises were made to the seller that are on the contract?",
+    hint:"e.g. cash before close, loan, stay after close" },
+  { label:"Promises Made to Seller NOT on Contract",
+    text:"What promises were made to the seller that are not on the contract?",
+    hint:"e.g. help find a rental, introduce to a lawyer" },
+  { label:"Seller in Financial Distress",
+    text:"Is the seller in any financial distress?",
+    hint:"" },
+  { label:"Registered Debts and Story",
+    text:"List all known registered debts on the property, and tell the story.",
+    hint:"taxes, liens, # of mortgages, who with, amounts, arrears, A/B/Private, power of sale, payment status" },
+  { label:"Rental Equipment Onsite",
+    text:"Is there any rental equipment onsite? If so, what is it, what company, what's assumed, what's bought out, the monthly payment, and the buyout?",
+    hint:"not necessary if hot water tank only" },
+  { label:"Property Status",
+    text:"What's the property status? Owner occupied, tenanted, or vacant?",
+    hint:"owner occupied / tenanted / vacant" },
+  { label:"Messaging to Seller re: Visit",
+    text:"What's our messaging to the seller about the visit?",
+    hint:"inspection? investor partner tour? finding them a buyer?" },
+  { label:"Property Access for Showings",
+    text:"How will dispo and buyers access the property for showings or subsequent visits?",
+    hint:"owner/tenant lets us in, lockbox location & code, other" },
+  { label:"Occupants Present at Showings",
+    text:"Will current occupants be at the house for showings, or will they go out?",
+    hint:"pick one" },
+  { label:"Occupants' Attitude to Showings",
+    text:"Are current occupants enthusiastic about leaving the house for showings, or reluctant?",
+    hint:"pick one" },
+  { label:"Concerns re: Inspection Crowd",
+    text:"Any seller concerns about around a dozen people being at the inspection?",
+    hint:"" },
+  { label:"Days / Time Frames That Don't Work",
+    text:"What days and time frames don't work?",
+    hint:"" },
+];
+
 /* ============================================================ */
 const $ = id => document.getElementById(id);
 const screens = { start:$("screen-start"), q:$("screen-q"), review:$("screen-review") };
+let mode = "debrief";
+let QUESTIONS = DEBRIEF_QUESTIONS;
 let current = 0;
-const answers = new Array(QUESTIONS.length).fill("");
+let answers = new Array(QUESTIONS.length).fill("");
 let recognition = null;
 let listening = false;
 let wantListening = false;   // survive mobile auto-stops
@@ -485,21 +642,21 @@ document.addEventListener("visibilitychange", () => {
 });
 
 /* ---------- Crash-safe draft (survives a closed tab or dead battery) ---------- */
-const DRAFT_KEY = "debrief-draft";
+function draftKey(){ return "gtahb-notes-draft-" + mode; }
 function saveDraft(){
   try{
-    localStorage.setItem(DRAFT_KEY, JSON.stringify({ current, answers, ts: Date.now() }));
+    localStorage.setItem(draftKey(), JSON.stringify({ current, answers, ts: Date.now() }));
   }catch(e){}
 }
 function loadDraft(){
   try{
-    const d = JSON.parse(localStorage.getItem(DRAFT_KEY));
+    const d = JSON.parse(localStorage.getItem(draftKey()));
     if (d && Array.isArray(d.answers) && d.answers.some(a => a) &&
         Date.now() - d.ts < 12*60*60*1000) return d;
   }catch(e){}
   return null;
 }
-function clearDraft(){ try{ localStorage.removeItem(DRAFT_KEY); }catch(e){} }
+function clearDraft(){ try{ localStorage.removeItem(draftKey()); }catch(e){} }
 
 /* ---------- Question flow ---------- */
 function loadQuestion(i){
@@ -569,7 +726,7 @@ function buildReview(){
 }
 
 function buildOutput(){
-  let out = "POST-APPOINTMENT NOTES\n";
+  let out = (mode === "under_contract" ? "UNDER CONTRACT NOTES" : "POST-APPOINTMENT NOTES") + "\n";
   out += "Rep: " + (metaAnswer("rep") || "N/A") + "\n";
   out += "Property: " + (metaAnswer("prop") || "N/A") + "\n";
   out += "Completed: " + new Date().toLocaleString() + "\n\n";
@@ -588,22 +745,26 @@ function toast(msg){
 }
 
 /* ---------- Events ---------- */
-$("btnStart").addEventListener("click", () => {
+function startFlow(selectedMode){
+  mode = selectedMode;
+  QUESTIONS = (mode === "under_contract") ? UNDER_CONTRACT_QUESTIONS : DEBRIEF_QUESTIONS;
+  answers = new Array(QUESTIONS.length).fill("");
   const draft = loadDraft();
   if (draft && draft.current < QUESTIONS.length - 1 &&
-      confirm("You have an unfinished debrief. Resume where you left off?")){
+      confirm("You have an unfinished set of notes. Resume where you left off?")){
     current = draft.current;
     draft.answers.forEach((a,i) => answers[i] = a || "");
   } else {
     clearDraft();
     current = 0;
-    answers.fill("");
   }
-  sheetSent = false;   // fresh debrief — allow one auto-send
+  sheetSent = false;   // fresh notes — allow one auto-send
   keepAwake();
   show("q");
   loadQuestion(current);
-});
+}
+$("btnDebrief").addEventListener("click", () => startFlow("debrief"));
+$("btnUnderContract").addEventListener("click", () => startFlow("under_contract"));
 
 $("btnMic").addEventListener("click", () => {
   if (!speechOK){ toast("Voice not supported — type instead"); return; }
@@ -650,6 +811,7 @@ async function sendToSheet(auto){
   sheetSent = true;
   status.textContent = "Sending to Google Sheet\u2026";
   const payload = {
+    type: mode,
     rep: metaAnswer("rep"), property: metaAnswer("prop"),
     completed: new Date().toISOString(),
     answers: QUESTIONS.filter(q => !q.meta).map((q) => {
