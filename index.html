@@ -165,6 +165,20 @@
     <button class="btn btn-green" id="btnUnderContract" style="margin-top:10px;">Got contract &middot; Under Contract Notes</button>
   </div>
 
+  <!-- ============ APPOINTMENT PICKER ============ -->
+  <div class="screen" id="screen-pick">
+    <div>
+      <div class="eyebrow">GTA House Buyers</div>
+      <h1>Which appointment?</h1>
+      <div class="sub">Tap the one you're debriefing — it links your notes to that seller.</div>
+    </div>
+    <div id="pickList" style="margin-top:16px;display:flex;flex-direction:column;gap:10px;">
+      <div class="note" id="pickLoading">Loading today's appointments…</div>
+    </div>
+    <div class="spacer"></div>
+    <button class="btn btn-ghost" id="btnPickManual" type="button" style="margin-top:14px;">Not listed / walk-in — type the address</button>
+  </div>
+
   <!-- ============ QUESTION ============ -->
   <div class="screen" id="screen-q">
     <div class="progress">
@@ -231,7 +245,8 @@ const DEBRIEF_QUESTIONS = [
     hint:"" },
   { label:"Property Address", meta:"prop",
     text:"What's the property address for this appointment?",
-    hint:"Fix spelling at the review screen if needed" },
+    hint:"Fix spelling at the review screen if needed",
+    skipIf: () => !!pickedPropertyId },
   { label:"Reason for No Offer",
     text:"Was there a reason no offer was made? If you made an offer, just say: offer was made.",
     hint:"Say \u201coffer was made\u201d if it doesn\u2019t apply." },
@@ -295,7 +310,8 @@ const UNDER_CONTRACT_QUESTIONS = [
     hint:"" },
   { label:"Property Address", meta:"prop",
     text:"What's the property address for this contract?",
-    hint:"Fix spelling at the review screen if needed" },
+    hint:"Fix spelling at the review screen if needed",
+    skipIf: () => !!pickedPropertyId },
 
   /* ---- Due diligence items ---- */
   { label:"Final Sales Rep's APS Uploaded",
@@ -445,10 +461,15 @@ const UNDER_CONTRACT_QUESTIONS = [
 
 /* ============================================================ */
 const $ = id => document.getElementById(id);
-const screens = { start:$("screen-start"), q:$("screen-q"), review:$("screen-review") };
+const screens = { start:$("screen-start"), pick:$("screen-pick"), q:$("screen-q"), review:$("screen-review") };
+// Today's-appointments feed (agent on the Mac Mini). Read-only token; the agent reads REsimpli's
+// "AI appts on calendar today" filter and returns each appt's address + Property Id.
+const AGENT_BASE = "https://raven-unloaded-disbelief.ngrok-free.dev";
+const APPTS_READ_TOKEN = "ghb-appts-b0278169ea37";
 let mode = "debrief";
 let QUESTIONS = DEBRIEF_QUESTIONS;
 let current = 0;
+let pickedPropertyId = null;   // set when the rep taps an appointment → deterministic REsimpli match
 let answers = new Array(QUESTIONS.length).fill("");
 let recognition = null;
 let listening = false;
@@ -682,7 +703,7 @@ function saveAndAdvance(value){
   // advance, skipping any question whose skipIf condition is met
   let next = current + 1;
   while (next < QUESTIONS.length && QUESTIONS[next].skipIf && QUESTIONS[next].skipIf()){
-    answers[next] = "N/A";
+    answers[next] = answers[next] || "N/A";   // keep any pre-filled value (e.g. picked property address)
     next++;
   }
   if (next < QUESTIONS.length){
@@ -745,26 +766,57 @@ function toast(msg){
 }
 
 /* ---------- Events ---------- */
-function startFlow(selectedMode){
+// Show today's appointments to tap (deterministic REsimpli match). Falls back to typing the address.
+function showPicker(selectedMode){
   mode = selectedMode;
+  pickedPropertyId = null;
+  show("pick");
+  const list = $("pickList");
+  list.innerHTML = "";
+  const loading = document.createElement("div");
+  loading.className = "note"; loading.textContent = "Loading today’s appointments…";
+  list.appendChild(loading);
+  fetch(AGENT_BASE + "/appointments/today?token=" + APPTS_READ_TOKEN, { headers: { "ngrok-skip-browser-warning": "true" } })
+    .then(r => r.json())
+    .then(renderAppts)
+    .catch(() => { list.innerHTML = ""; const n = document.createElement("div"); n.className = "note";
+      n.textContent = "Couldn’t load today’s appointments — tap below to type the address."; list.appendChild(n); });
+}
+function renderAppts(appts){
+  const list = $("pickList");
+  list.innerHTML = "";
+  if (!Array.isArray(appts) || !appts.length){
+    const n = document.createElement("div"); n.className = "note";
+    n.textContent = "No appointments found for today — tap below to type the address."; list.appendChild(n); return;
+  }
+  appts.forEach(a => {
+    const b = document.createElement("button");
+    b.type = "button"; b.className = "btn btn-ghost";
+    b.style.textAlign = "left"; b.style.padding = "14px"; b.style.textTransform = "none"; b.style.letterSpacing = "0";
+    const addr = document.createElement("div"); addr.textContent = a.address || "(no address)";
+    addr.style.fontSize = "16px"; addr.style.color = "var(--text)";
+    const nm = document.createElement("div"); nm.textContent = a.name || "";
+    nm.style.fontSize = "13px"; nm.style.color = "var(--muted)"; nm.style.marginTop = "2px";
+    b.appendChild(addr); b.appendChild(nm);
+    b.addEventListener("click", () => beginFlow(a.address || "", a.leadId || null));
+    list.appendChild(b);
+  });
+}
+function beginFlow(presetAddress, propId){
   QUESTIONS = (mode === "under_contract") ? UNDER_CONTRACT_QUESTIONS : DEBRIEF_QUESTIONS;
   answers = new Array(QUESTIONS.length).fill("");
-  const draft = loadDraft();
-  if (draft && draft.current < QUESTIONS.length - 1 &&
-      confirm("You have an unfinished set of notes. Resume where you left off?")){
-    current = draft.current;
-    draft.answers.forEach((a,i) => answers[i] = a || "");
-  } else {
-    clearDraft();
-    current = 0;
-  }
+  pickedPropertyId = propId || null;
+  clearDraft();
+  current = 0;
+  if (presetAddress){ const pi = QUESTIONS.findIndex(q => q.meta === "prop"); if (pi >= 0) answers[pi] = presetAddress; }
   sheetSent = false;   // fresh notes — allow one auto-send
   keepAwake();
   show("q");
   loadQuestion(current);
 }
-$("btnDebrief").addEventListener("click", () => startFlow("debrief"));
-$("btnUnderContract").addEventListener("click", () => startFlow("under_contract"));
+$("btnDebrief").addEventListener("click", () => showPicker("debrief"));
+$("btnUnderContract").addEventListener("click", () => showPicker("under_contract"));
+$("btnPickManual").addEventListener("click", () => beginFlow(null, null));
 
 $("btnMic").addEventListener("click", () => {
   if (!speechOK){ toast("Voice not supported — type instead"); return; }
@@ -812,7 +864,7 @@ async function sendToSheet(auto){
   status.textContent = "Sending to Google Sheet\u2026";
   const payload = {
     type: mode,
-    rep: metaAnswer("rep"), property: metaAnswer("prop"),
+    rep: metaAnswer("rep"), property: metaAnswer("prop"), propertyId: pickedPropertyId,
     completed: new Date().toISOString(),
     answers: QUESTIONS.filter(q => !q.meta).map((q) => {
       const i = QUESTIONS.indexOf(q);
